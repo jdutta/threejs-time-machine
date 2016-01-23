@@ -1,5 +1,5 @@
 $(document).ready(function () {
-    var scene, camera, renderer, controls, stats;
+    var scene, camera, renderer, effect, controls, stats;
 
     var AMB_LIGHT_COLOR = 0x333333;
     var DIR_LIGHT_COLOR = 0xffffff;
@@ -43,7 +43,16 @@ $(document).ready(function () {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
+        if (!!effect) {
+            effect.setSize(window.innerWidth, window.innerHeight);
+        }
         //render(); // may be expensive
+    }
+
+    function setEffect() {
+        // Creates the Stereo Effect for the VR experience.
+        effect = new THREE.StereoEffect(renderer);
+        effect.setSize(window.innerWidth, window.innerHeight);
     }
 
     function init() {
@@ -56,6 +65,9 @@ $(document).ready(function () {
         renderer.setClearColor(scene.fog.color);
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
+
+        // Enable effect optionally
+        //setEffect();
 
         addAxis();
         addLights();
@@ -163,7 +175,11 @@ $(document).ready(function () {
     }
 
     function render() {
-        renderer.render(scene, camera);
+        if (!!effect) {
+            effect.render(scene, camera);
+        } else {
+            renderer.render(scene, camera);
+        }
         stats.update();
     }
 
