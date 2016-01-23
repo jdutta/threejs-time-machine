@@ -45,7 +45,7 @@ $(document).ready(function () {
         camera.position.z = 500;
 
         scene.fog = new THREE.FogExp2(0x333333, 0.001);
-        renderer = new THREE.WebGLRenderer();
+        renderer = new THREE.WebGLRenderer({antialias: true});
         renderer.setClearColor(scene.fog.color);
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
@@ -54,7 +54,6 @@ $(document).ready(function () {
         addLights();
         addTrackballControls();
         addStats();
-        //addPoints(200);
         addPointsFromData(generateData(100));
 
         render();
@@ -75,65 +74,6 @@ $(document).ready(function () {
             data.push(obj);
         }
         return data;
-    }
-
-    function addPoints(n) {
-        var PLANE_SIZE = 10;
-        var DIST_BETWEEN_PLANES = 10;
-        var PLANE_COLOR = 0xaaaaaa;
-        var BOX_SIZE = 1;
-        var SEQ_TEXT_SIZE = 0.5;
-        var POINT_INFO_TEXT_SIZE = 0.1;
-
-        for (var i = 0; i < n * DIST_BETWEEN_PLANES; i += DIST_BETWEEN_PLANES) {
-            var planeGroup = new THREE.Group();
-            scene.add(planeGroup);
-
-            var plane = new THREE.Mesh(new THREE.PlaneGeometry(PLANE_SIZE, PLANE_SIZE), new THREE.MeshBasicMaterial({
-                color: PLANE_COLOR,
-                side: THREE.DoubleSide,
-                transparent: true,
-                opacity: 0.1
-            }));
-            plane.position.z = i;
-            planeGroup.add(plane);
-
-            var boxColor = Math.random() * 0xffffff;
-            var pointBox = new THREE.Mesh(new THREE.BoxGeometry(BOX_SIZE, BOX_SIZE, 0.1), new THREE.MeshLambertMaterial({color: boxColor}));
-            pointBox.position.x = (Math.random() - 0.5) * BOX_SIZE * 8;
-            pointBox.position.y = (Math.random() - 0.5) * BOX_SIZE * 8;
-            pointBox.position.z = plane.position.z;
-            planeGroup.add(pointBox);
-
-            var seqNumText3d = new THREE.TextGeometry('' + i, {
-                size: SEQ_TEXT_SIZE,
-                height: SEQ_TEXT_SIZE,
-                curveSegments: 2,
-                font: 'helvetiker'
-            });
-            var textMaterial = new THREE.MeshFaceMaterial([
-                new THREE.MeshBasicMaterial({color: 0xffffff, overdraw: 0.5, transparent: true, opacity: 0.2}),
-                new THREE.MeshBasicMaterial({color: 0x000000, overdraw: 0.5, transparent: true, opacity: 0.2})
-            ]);
-            var seqNumText = new THREE.Mesh(seqNumText3d, textMaterial);
-            seqNumText.position.x = -PLANE_SIZE/2;
-            seqNumText.position.y = -PLANE_SIZE/2;
-            seqNumText.position.z = i;
-            planeGroup.add(seqNumText);
-
-            var pointInfoText3d = new THREE.TextGeometry('foo' + i, {
-                size: POINT_INFO_TEXT_SIZE,
-                height: POINT_INFO_TEXT_SIZE,
-                curveSegments: 2,
-                font: 'helvetiker'
-            });
-            var pointInfoText = new THREE.Mesh(pointInfoText3d, textMaterial);
-            pointInfoText.position.x = pointBox.position.x - BOX_SIZE/2;
-            pointInfoText.position.y = pointBox.position.y + BOX_SIZE/2;
-            pointInfoText.position.z = i;
-            planeGroup.add(pointInfoText);
-        }
-        camera.position.z = i;
     }
 
     function addPointsFromData(data) {
@@ -175,20 +115,16 @@ $(document).ready(function () {
             plane.position.z = zPos;
             planeGroup.add(plane);
 
-            var seqNumText3d = new THREE.TextGeometry(new Date(obj.epoch*1000).toDateString(), {
-                size: SEQ_TEXT_SIZE,
-                height: SEQ_TEXT_SIZE,
-                curveSegments: 2,
-                font: 'helvetiker'
-            });
-            var textMaterial = new THREE.MeshFaceMaterial([
-                new THREE.MeshBasicMaterial({color: 0xffffff, overdraw: 0.5, transparent: true, opacity: 0.4}),
-                new THREE.MeshBasicMaterial({color: 0x000000, overdraw: 0.5, transparent: true, opacity: 0.2})
-            ]);
-            var seqNumText = new THREE.Mesh(seqNumText3d, textMaterial);
+            var seqNumTextShape = THREE.FontUtils.generateShapes(new Date(obj.epoch*1000).toDateString(), {
+                font: 'helvetiker',
+                size: SEQ_TEXT_SIZE
+            } );
+            var seqNumTextGeom = new THREE.ShapeGeometry(seqNumTextShape);
+            var textMaterial = new THREE.MeshBasicMaterial({color: 0xffffff, overdraw: 0.5, transparent: true, opacity: 0.4});
+            var seqNumText = new THREE.Mesh(seqNumTextGeom, textMaterial);
             seqNumText.position.x = -PLANE_SIZE/2;
             seqNumText.position.y = -PLANE_SIZE/2;
-            seqNumText.position.z = zPos;
+            seqNumText.position.z = zPos + 0.1;
             planeGroup.add(seqNumText);
 
             for (var j = 0; j < obj.values.length; j++) {
@@ -199,16 +135,15 @@ $(document).ready(function () {
                 pointBox.position.z = zPos;
                 planeGroup.add(pointBox);
 
-                var pointInfoText3d = new THREE.TextGeometry('' + obj.values[j], {
-                    size: POINT_INFO_TEXT_SIZE,
-                    height: POINT_INFO_TEXT_SIZE,
-                    curveSegments: 2,
-                    font: 'helvetiker'
-                });
-                var pointInfoText = new THREE.Mesh(pointInfoText3d, textMaterial);
+                var pointInfoTextShape = THREE.FontUtils.generateShapes('' + obj.values[j], {
+                    font: 'helvetiker',
+                    size: POINT_INFO_TEXT_SIZE
+                } );
+                var pointInfoTextGeom = new THREE.ShapeGeometry(pointInfoTextShape);
+                var pointInfoText = new THREE.Mesh(pointInfoTextGeom, textMaterial);
                 pointInfoText.position.x = pointBox.position.x - BOX_SIZE / 2 + POINT_INFO_TEXT_SIZE * 0.5;
                 pointInfoText.position.y = pointBox.position.y + BOX_SIZE / 2 - POINT_INFO_TEXT_SIZE * 1.5;
-                pointInfoText.position.z = zPos;
+                pointInfoText.position.z = zPos + 0.1;
                 planeGroup.add(pointInfoText);
             }
 
