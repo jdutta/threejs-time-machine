@@ -21,8 +21,8 @@ $(document).ready(function () {
 
     function addTrackballControls() {
         controls = new THREE.TrackballControls(camera);
-        controls.rotateSpeed = 0.1;
-        controls.zoomSpeed = 0.5;
+        controls.rotateSpeed = 0.01;
+        controls.zoomSpeed = 0.1;
         controls.panSpeed = 0.1;
         controls.noZoom = false;
         controls.noPan = false;
@@ -37,6 +37,13 @@ $(document).ready(function () {
         stats.domElement.style.top = '0px';
         stats.domElement.style.zIndex = 100;
         document.body.appendChild(stats.domElement);
+    }
+
+    function resize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        //render(); // may be expensive
     }
 
     function init() {
@@ -55,6 +62,8 @@ $(document).ready(function () {
         addTrackballControls();
         addStats();
         addPointsFromData(generateData(100));
+
+        window.addEventListener('resize', resize, false);
 
         render();
     }
