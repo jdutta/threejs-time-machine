@@ -52,6 +52,7 @@ $(document).ready(function () {
     function setEffect() {
         // Creates the Stereo Effect for the VR experience.
         effect = new THREE.StereoEffect(renderer);
+        //effect = new THREE.VREffect(renderer);
         effect.setSize(window.innerWidth, window.innerHeight);
     }
 
