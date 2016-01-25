@@ -49,10 +49,13 @@ $(document).ready(function () {
         //render(); // may be expensive
     }
 
-    function setEffect() {
+    function setStereoEffect(params) {
         // Creates the Stereo Effect for the VR experience.
-        effect = new THREE.StereoEffect(renderer);
-        //effect = new THREE.VREffect(renderer);
+        if (!!params.oculus) {
+            effect = new THREE.OculusRiftEffect(renderer);
+        } else {
+            effect = new THREE.StereoEffect(renderer);
+        }
         effect.setSize(window.innerWidth, window.innerHeight);
     }
 
@@ -68,12 +71,12 @@ $(document).ready(function () {
         document.body.appendChild(renderer.domElement);
 
         // Enable effect optionally
-        //setEffect();
+        //setStereoEffect({oculus: true});
 
         addAxis();
         addLights();
         addTrackballControls();
-        addStats();
+        //addStats();
         addPointsFromData(generateData(100));
 
         window.addEventListener('resize', resize, false);
@@ -181,7 +184,9 @@ $(document).ready(function () {
         } else {
             renderer.render(scene, camera);
         }
-        stats.update();
+        if (!!stats) {
+            stats.update();
+        }
     }
 
     function animate() {
