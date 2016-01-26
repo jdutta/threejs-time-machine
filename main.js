@@ -26,7 +26,7 @@ $(document).ready(function () {
     function addControls(params) {
         if (!!params.trackball) {
             controls = new THREE.TrackballControls(camera);
-            controls.rotateSpeed = 0.01;
+            controls.rotateSpeed = 0.1;
             controls.zoomSpeed = 0.1;
             controls.panSpeed = 0.1;
             controls.noZoom = false;
@@ -35,9 +35,9 @@ $(document).ready(function () {
             controls.dynamicDampingFactor = 0.3;
         } else {
             controls = new THREE.OrbitControls(camera);
-            controls.rotateSpeed = 0.1;
-            controls.zoomSpeed = 0.1;
-            controls.panSpeed = 0.1;
+            controls.rotateSpeed = 0.5;
+            controls.zoomSpeed = 0.2;
+            controls.panSpeed = 0.2;
         }
         controls.addEventListener('change', render);
     }
@@ -79,7 +79,7 @@ $(document).ready(function () {
     function init() {
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(params.focalLength, window.innerWidth / window.innerHeight, .1, 1000);
-        camera.position.z = 500;
+        camera.position.z = 50;
 
         scene.fog = new THREE.FogExp2(0x333333, 0.001);
         renderer = new THREE.WebGLRenderer({antialias: true});
@@ -93,9 +93,9 @@ $(document).ready(function () {
         //addParamsGui(); // Does not work well with trackball controls
         addAxis();
         addLights();
-        addControls({trackball: true});
+        addControls({trackball: false});
         //addStats();
-        addPointsFromData(generateData(100));
+        addPointsFromData(processData(generateData(4)));
 
         window.addEventListener('resize', resize, false);
 
@@ -106,20 +106,83 @@ $(document).ready(function () {
         return Math.floor(Math.random() * x);
     }
 
-    function generateData(n) {
-        var data = [];
-        var now = Math.floor(Date.now()/1000);
-        for (var i = 0; i < n; i++) {
-            var obj = {
-                epoch: now - i*86400,
-                values: [getRandInt(30), getRandInt(10), getRandInt(40), getRandInt(20)]
-            };
-            data.push(obj);
+    // n: number of levels
+    function generateData(n, level, nodeIndex) {
+        level = level || 0;
+        nodeIndex = nodeIndex || 0;
+        var levelObj = {};
+        levelObj.name = 'level_' + level + '_node_' + nodeIndex;
+        if (level < n-1) {
+            var children = [];
+            var childCount = 1 + getRandInt(4);
+            for (var i = 0; i < childCount; i++) {
+                children.push(generateData(n, level+1, i));
+            }
+            levelObj.children = children;
+        } else {
+            levelObj.value = getRandInt(10);
         }
-        return data;
+
+        return levelObj;
     }
 
-    function addPointsFromData(data) {
+    // Add layout info to input data
+    function processData(data, level, siblingIndex) {
+        var GAP_X = 7;
+        var GAP_Y = 3;
+        var GAP_Z = 0;
+        var y = 0;
+
+        function applyCoords(data, level) {
+            siblingIndex = siblingIndex || 0;
+            level = level || 0;
+            data.level = level;
+            data.coords = {
+                x: GAP_X * level,
+                y: GAP_Y * y++,
+                z: GAP_Z * level
+            };
+            console.log('coordsy', data.coords.y)
+            if (!!data.children) {
+                for (var i = 0; i < data.children.length; i++) {
+                    applyCoords(data.children[i], level + 1);
+                }
+            }
+            return data;
+        }
+        return applyCoords(data);
+    }
+
+    function addPointsFromData(node, parentNode) {
+        var coords = node.coords;
+        var nodeSphere = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 10), new THREE.MeshLambertMaterial({color: 0xffffff}));
+        nodeSphere.position.x = coords.x;
+        nodeSphere.position.y = coords.y;
+        nodeSphere.position.z = coords.z;
+        scene.add(nodeSphere);
+
+        if (!!parentNode) {
+            var pCoords = parentNode.coords;
+            var geom = new THREE.Geometry();
+            geom.vertices.push(new THREE.Vector3(pCoords.x, pCoords.y, pCoords.z));
+            geom.vertices.push(new THREE.Vector3(coords.x, coords.y, coords.z));
+            var material = new THREE.LineBasicMaterial({
+                color: 0xffffff,
+                linewidth: 2
+            });
+            var line = new THREE.Line(geom, material);
+            scene.add(line);
+        }
+
+        if (!!node.children) {
+            for (var i = 0; i < node.children.length; i++) {
+                addPointsFromData(node.children[i], node);
+            }
+        }
+    }
+
+    // TODO remove
+    function addPointsFromDataXXX(data) {
         var PLANE_SIZE = 10;
         var PLANE_COLOR = 0xaaaaaa;
         var BOX_SIZE = 1;
@@ -210,7 +273,9 @@ $(document).ready(function () {
 
     function animate() {
         requestAnimationFrame(animate);
-        controls.update();
+        if (!!controls) {
+            controls.update();
+        }
     }
 
     init();
