@@ -1,6 +1,10 @@
 $(document).ready(function () {
     var scene, camera, renderer, effect, controls, stats;
 
+    var params = {
+        focalLength: 35
+    };
+
     var AMB_LIGHT_COLOR = 0x333333;
     var DIR_LIGHT_COLOR = 0xffffff;
 
@@ -19,15 +23,22 @@ $(document).ready(function () {
         scene.add(light1);
     }
 
-    function addTrackballControls() {
-        controls = new THREE.TrackballControls(camera);
-        controls.rotateSpeed = 0.01;
-        controls.zoomSpeed = 0.1;
-        controls.panSpeed = 0.1;
-        controls.noZoom = false;
-        controls.noPan = false;
-        controls.staticMoving = true;
-        controls.dynamicDampingFactor = 0.3;
+    function addControls(params) {
+        if (!!params.trackball) {
+            controls = new THREE.TrackballControls(camera);
+            controls.rotateSpeed = 0.01;
+            controls.zoomSpeed = 0.1;
+            controls.panSpeed = 0.1;
+            controls.noZoom = false;
+            controls.noPan = false;
+            controls.staticMoving = true;
+            controls.dynamicDampingFactor = 0.3;
+        } else {
+            controls = new THREE.OrbitControls(camera);
+            controls.rotateSpeed = 0.1;
+            controls.zoomSpeed = 0.1;
+            controls.panSpeed = 0.1;
+        }
         controls.addEventListener('change', render);
     }
 
@@ -59,9 +70,15 @@ $(document).ready(function () {
         effect.setSize(window.innerWidth, window.innerHeight);
     }
 
+    function addParamsGui() {
+        var gui = new dat.GUI();
+        gui.add(params, 'focalLength', { '15mm': 15, '35mm': 35, '50mm': 50 } );
+        gui.open();
+    }
+
     function init() {
         scene = new THREE.Scene();
-        camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, .1, 1000);
+        camera = new THREE.PerspectiveCamera(params.focalLength, window.innerWidth / window.innerHeight, .1, 1000);
         camera.position.z = 500;
 
         scene.fog = new THREE.FogExp2(0x333333, 0.001);
@@ -73,9 +90,10 @@ $(document).ready(function () {
         // Enable effect optionally
         //setStereoEffect({oculus: true});
 
+        //addParamsGui(); // Does not work well with trackball controls
         addAxis();
         addLights();
-        addTrackballControls();
+        addControls({trackball: true});
         //addStats();
         addPointsFromData(generateData(100));
 
@@ -174,6 +192,7 @@ $(document).ready(function () {
 
             if (camera.position.z < zPos) {
                 camera.position.z = zPos + 30;
+                controls.maxDistance = camera.position.z;
             }
         }
     }
