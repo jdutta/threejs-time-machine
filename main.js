@@ -6,7 +6,7 @@ $(document).ready(function () {
     };
 
     var AMB_LIGHT_COLOR = 0x333333;
-    var DIR_LIGHT_COLOR = 0xffff00;
+    var DIR_LIGHT_COLOR = 0xffffff;
 
     function addAxis() {
         var axisHelper = new THREE.AxisHelper(5000);
@@ -18,7 +18,7 @@ $(document).ready(function () {
         scene.add(ambLight);
 
         var light1 = new THREE.DirectionalLight(DIR_LIGHT_COLOR);
-        light1.position.set(0, 0, 50);
+        light1.position.set(0, 1, 1);
         //light1.add(new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 8), new THREE.MeshBasicMaterial({ color: DIR_LIGHT_COLOR })));
         scene.add(light1);
     }
@@ -36,7 +36,7 @@ $(document).ready(function () {
         } else {
             controls = new THREE.OrbitControls(camera);
             controls.rotateSpeed = 0.5;
-            controls.zoomSpeed = 0.3;
+            controls.zoomSpeed = 0.2;
             controls.panSpeed = 0.2;
         }
         controls.addEventListener('change', render);
@@ -78,7 +78,7 @@ $(document).ready(function () {
 
     function init() {
         scene = new THREE.Scene();
-        camera = new THREE.PerspectiveCamera(params.focalLength, window.innerWidth / window.innerHeight, .1, 2000);
+        camera = new THREE.PerspectiveCamera(params.focalLength, window.innerWidth / window.innerHeight, .1, 1000);
         camera.position.z = 50;
 
         scene.fog = new THREE.FogExp2(0x333333, 0.001);
@@ -95,21 +95,15 @@ $(document).ready(function () {
         addLights();
         addControls({trackball: false});
         //addStats();
-        addPointsFromData(processData(generateData(5)));
+        addPointsFromData(processData(generateData(4)));
 
         window.addEventListener('resize', resize, false);
 
         render();
     }
 
-    // 0 <= n < x
     function getRandInt(x) {
         return Math.floor(Math.random() * x);
-    }
-
-    // -x/2 <= n < x/2
-    function getRandIntSymmetric(x) {
-        return Math.floor(Math.random() * x - x / 2);
     }
 
     // n: number of levels
@@ -133,77 +127,137 @@ $(document).ready(function () {
     }
 
     // Add layout info to input data
-    function processData(data) {
+    function processData(data, level, siblingIndex) {
+        var GAP_X = 7;
+        var GAP_Y = 3;
+        var GAP_Z = 0;
+        var y = 0;
 
-        var nLeafNodes = 0;
-        function calcLeafNodes(node) {
-            if (!node.children) {
-                nLeafNodes++;
-            } else {
-                node.children.forEach(calcLeafNodes);
-            }
-            return nLeafNodes;
-        }
-        calcLeafNodes(data);
-
-        var treeHeight = nLeafNodes * 5;
-        var treeWidth = 100;
-        var tree = d3.layout.tree()
-            .size([treeHeight, treeWidth]);
-        var nodes = tree.nodes(data),
-            links = tree.links(nodes);
-
-        // Assign z-values randomly
-        function assignRandomZ() {
-            var link0 = links[0];
-            var linkLen = (new THREE.Vector3(link0.source.x, link0.source.y, link0.source.z)).sub(new THREE.Vector3(link0.target.x, link0.target.y, link0.target.z)).length();
-            var xThetaMax = 20;
-            nodes.forEach(function (node) {
-                node.z = 0;
-                if (!!node.parent) {
-                    if (node.parent.children.length > 1) {
-                        var xTheta = getRandIntSymmetric(xThetaMax) * Math.PI / 180;
-                        node.z = node.parent.z + linkLen * Math.sin(xTheta);
-                        node.y = node.y - linkLen * (1 - Math.cos(xTheta));
-                    } else {
-                        node.z = node.parent.z;
-                    }
+        function applyCoords(data, level) {
+            siblingIndex = siblingIndex || 0;
+            level = level || 0;
+            data.level = level;
+            data.coords = {
+                x: GAP_X * level,
+                y: GAP_Y * y++,
+                z: GAP_Z * level
+            };
+            console.log('coordsy', data.coords.y)
+            if (!!data.children) {
+                for (var i = 0; i < data.children.length; i++) {
+                    applyCoords(data.children[i], level + 1);
                 }
-            });
+            }
+            return data;
         }
-        assignRandomZ();
-
-        return {
-            nodes: nodes,
-            links: links
-        };
+        return applyCoords(data);
     }
 
-    function addPointsFromData(treeData) {
-        treeData.nodes.forEach(function (node) {
-            var nodeSphere = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 10), new THREE.MeshLambertMaterial({color: 0xffffff}));
-            nodeSphere.position.x = node.x;
-            nodeSphere.position.y = node.y;
-            nodeSphere.position.z = node.z;
-            scene.add(nodeSphere);
-        });
-        //camera.up.set(-1, 0, 0);
-        camera.position.set(treeData.nodes[treeData.nodes.length - 1].x/2, treeData.nodes[0].y, 100);
-        controls.target.set(treeData.nodes[treeData.nodes.length - 1].x/2, treeData.nodes[0].y, 0);
+    function addPointsFromData(node, parentNode) {
+        var coords = node.coords;
+        var nodeSphere = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 10), new THREE.MeshLambertMaterial({color: 0xffffff}));
+        nodeSphere.position.x = coords.x;
+        nodeSphere.position.y = coords.y;
+        nodeSphere.position.z = coords.z;
+        scene.add(nodeSphere);
 
-        treeData.links.forEach(function (link) {
-            var src = link.source;
-            var tgt = link.target;
-            var geometry = new THREE.Geometry();
-            geometry.vertices.push(new THREE.Vector3(src.x, src.y, src.z));
-            geometry.vertices.push(new THREE.Vector3(tgt.x, tgt.y, tgt.z));
+        if (!!parentNode) {
+            var pCoords = parentNode.coords;
+            var geom = new THREE.Geometry();
+            geom.vertices.push(new THREE.Vector3(pCoords.x, pCoords.y, pCoords.z));
+            geom.vertices.push(new THREE.Vector3(coords.x, coords.y, coords.z));
             var material = new THREE.LineBasicMaterial({
                 color: 0xffffff,
                 linewidth: 2
             });
-            var line = new THREE.Line(geometry, material);
+            var line = new THREE.Line(geom, material);
             scene.add(line);
+        }
+
+        if (!!node.children) {
+            for (var i = 0; i < node.children.length; i++) {
+                addPointsFromData(node.children[i], node);
+            }
+        }
+    }
+
+    // TODO remove
+    function addPointsFromDataXXX(data) {
+        var PLANE_SIZE = 10;
+        var PLANE_COLOR = 0xaaaaaa;
+        var BOX_SIZE = 1;
+        var SEQ_TEXT_SIZE = 0.5;
+        var POINT_INFO_TEXT_SIZE = 0.1;
+
+        var n = data.length;
+        var highestEpoch = d3.max(data, function (o) { return o.epoch; });
+        var highestValue = d3.max(data, function (o) {
+            return d3.max(o.values);
         });
+        var xScale = d3.scale.ordinal()
+            .domain(d3.range(data[0].values.length))
+            .rangeRoundPoints([-PLANE_SIZE/2, PLANE_SIZE/2], 0.5);
+        var valScale = d3.scale.linear()
+            .domain([0, highestValue])
+            .range([0, PLANE_SIZE/2]);
+        var colorScale = d3.scale.linear()
+            .domain([0, highestValue])
+            .range(['#9aca40', '#ff3300']);
+
+        for (var i = 0; i < n; i++) {
+            var obj = data[i];
+            var epochDiff = highestEpoch - obj.epoch;
+            var zPos = epochDiff/8640;
+
+            var planeGroup = new THREE.Group();
+            scene.add(planeGroup);
+
+            var plane = new THREE.Mesh(new THREE.PlaneGeometry(PLANE_SIZE, PLANE_SIZE), new THREE.MeshBasicMaterial({
+                color: PLANE_COLOR,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.1
+            }));
+            plane.position.z = zPos;
+            planeGroup.add(plane);
+
+            var seqNumTextShape = THREE.FontUtils.generateShapes(new Date(obj.epoch*1000).toDateString(), {
+                font: 'helvetiker',
+                size: SEQ_TEXT_SIZE
+            } );
+            var seqNumTextGeom = new THREE.ShapeGeometry(seqNumTextShape);
+            var textMaterial = new THREE.MeshBasicMaterial({color: 0xffffff, overdraw: 0.5, transparent: true, opacity: 0.4});
+            var seqNumText = new THREE.Mesh(seqNumTextGeom, textMaterial);
+            seqNumText.position.x = -PLANE_SIZE/2;
+            seqNumText.position.y = -PLANE_SIZE/2;
+            seqNumText.position.z = zPos + 0.1;
+            planeGroup.add(seqNumText);
+
+            for (var j = 0; j < obj.values.length; j++) {
+                var boxColor = colorScale(obj.values[j]);
+                var pointBox = new THREE.Mesh(new THREE.BoxGeometry(BOX_SIZE, BOX_SIZE, 0.1), new THREE.MeshLambertMaterial({color: boxColor}));
+                pointBox.position.x = xScale(j);
+                pointBox.position.y = valScale(obj.values[j]);
+                pointBox.position.z = zPos;
+                planeGroup.add(pointBox);
+
+                var pointInfoTextShape = THREE.FontUtils.generateShapes('' + obj.values[j], {
+                    font: 'helvetiker',
+                    size: POINT_INFO_TEXT_SIZE
+                } );
+                var pointInfoTextGeom = new THREE.ShapeGeometry(pointInfoTextShape);
+                var pointInfoText = new THREE.Mesh(pointInfoTextGeom, textMaterial);
+                pointInfoText.position.x = pointBox.position.x - BOX_SIZE / 2 + POINT_INFO_TEXT_SIZE * 0.5;
+                pointInfoText.position.y = pointBox.position.y + BOX_SIZE / 2 - POINT_INFO_TEXT_SIZE * 1.5;
+                pointInfoText.position.z = zPos + 0.1;
+                planeGroup.add(pointInfoText);
+            }
+
+            if (camera.position.z < zPos) {
+                camera.position.z = zPos + 30;
+                controls.maxDistance = camera.position.z;
+            }
+        }
     }
 
     function render() {
