@@ -17,7 +17,7 @@ THREE.OculusRiftEffect = function ( renderer, options ) {
 		vResolution: 800,
 		hScreenSize: 0.14976,
 		vScreenSize: 0.0936,
-		interpupillaryDistance: 0.064,
+		interpupillaryDistance: 0.084, // default 0.064
 		lensSeparationDistance: 0.064,
 		eyeToScreenDistance: 0.041,
 		distortionK : [1.0, 0.22, 0.24, 0.0],
