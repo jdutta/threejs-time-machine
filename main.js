@@ -76,6 +76,20 @@ $(document).ready(function () {
         gui.open();
     }
 
+    function getLocationSearchHash() {
+        var params = window.location.search;
+        var map = {};
+        if (!params) {
+            return map;
+        }
+        var paramsArr = params.replace(/^\?/, '').replace(/\/$/, '').split('&');
+        paramsArr.forEach(function (keqv) {
+            var kv = keqv.split('=');
+            map[kv[0]] = kv[1];
+        });
+        return map;
+    }
+
     function init() {
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(params.focalLength, window.innerWidth / window.innerHeight, .1, 1000);
@@ -88,7 +102,10 @@ $(document).ready(function () {
         document.body.appendChild(renderer.domElement);
 
         // Enable effect optionally
-        //setStereoEffect({oculus: true});
+        var searchHash = getLocationSearchHash();
+        if (searchHash.vr) {
+            setStereoEffect({oculus: searchHash.vr === '1'});
+        }
 
         //addParamsGui(); // Does not work well with trackball controls
         addAxis();
