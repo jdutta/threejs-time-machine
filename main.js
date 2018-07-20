@@ -1,8 +1,8 @@
 $(document).ready(function () {
-    var scene, camera, renderer, effect, controls, stats;
+    var scene, camera, container, renderer, effect, controls, stats, clock;
 
     var params = {
-        focalLength: 35
+        focalLength: 90
     };
 
     var AMB_LIGHT_COLOR = 0x333333;
@@ -38,8 +38,25 @@ $(document).ready(function () {
             controls.rotateSpeed = 0.1;
             controls.zoomSpeed = 0.1;
             controls.panSpeed = 0.1;
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.5;
+            controls.enableZoom = true;
         }
-        controls.addEventListener('change', render);
+        // Not needed if render is part of 60fps animation routine
+        //controls.addEventListener('change', render);
+
+        // Our preferred controls via DeviceOrientation
+        function setOrientationControls(e) {
+            if (!e.alpha) {
+                return;
+            }
+            controls = new THREE.DeviceOrientationControls(camera, true);
+            controls.connect();
+            controls.update();
+            renderer.domElement.addEventListener('click', fullscreen, false);
+            window.removeEventListener('deviceorientation', setOrientationControls, true);
+        }
+        window.addEventListener('deviceorientation', setOrientationControls, true);
     }
 
     function addStats() {
@@ -57,7 +74,6 @@ $(document).ready(function () {
         if (!!effect) {
             effect.setSize(window.innerWidth, window.innerHeight);
         }
-        //render(); // may be expensive
     }
 
     function setStereoEffect(params) {
@@ -93,19 +109,22 @@ $(document).ready(function () {
     function init() {
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera(params.focalLength, window.innerWidth / window.innerHeight, .1, 1000);
-        camera.position.z = 500;
+        camera.position.z = 400;
 
         scene.fog = new THREE.FogExp2(0x333333, 0.001);
         renderer = new THREE.WebGLRenderer({antialias: true});
         renderer.setClearColor(scene.fog.color);
         renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
+        container = document.body;
+        container.appendChild(renderer.domElement);
 
         // Enable effect optionally
         var searchHash = getLocationSearchHash();
         if (searchHash.vr) {
             setStereoEffect({oculus: searchHash.vr === '1'});
         }
+
+        clock = new THREE.Clock();
 
         //addParamsGui(); // Does not work well with trackball controls
         addAxis();
@@ -214,7 +233,7 @@ $(document).ready(function () {
         }
     }
 
-    function render() {
+    function render(dt) {
         if (!!effect) {
             effect.render(scene, camera);
         } else {
@@ -225,9 +244,31 @@ $(document).ready(function () {
         }
     }
 
+    function update(dt) {
+        controls.update(dt);
+    }
+
     function animate() {
         requestAnimationFrame(animate);
-        controls.update();
+        camera.updateProjectionMatrix();
+        update(clock.getDelta());
+        render(clock.getDelta());
+    }
+
+    function fullscreen() {
+        if (container.requestFullscreen) {
+            container.requestFullscreen();
+        } else if (container.msRequestFullscreen) {
+            container.msRequestFullscreen();
+        } else if (container.mozRequestFullScreen) {
+            container.mozRequestFullScreen();
+        } else if (container.webkitRequestFullscreen) {
+            container.webkitRequestFullscreen();
+        }
+    }
+
+    function debug(msg) {
+        document.getElementById('debug').innerText = msg;
     }
 
     init();
